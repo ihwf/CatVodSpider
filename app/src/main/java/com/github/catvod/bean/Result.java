@@ -29,7 +29,9 @@ public class Result {
     @SerializedName("format")
     private String format;
     @SerializedName("danmaku")
-    private String danmaku;
+    private List<Danmaku> danmaku;
+    @SerializedName("click")
+    private String click;
     @SerializedName("msg")
     private String msg;
     @SerializedName("url")
@@ -91,6 +93,10 @@ public class Result {
 
     public static String error(String msg) {
         return Result.get().vod(Collections.emptyList()).msg(msg).string();
+    }
+
+    public static String notify(String msg) {
+        return Result.get().msg(msg).string();
     }
 
     public static Result get() {
@@ -169,8 +175,13 @@ public class Result {
         return this;
     }
 
-    public Result danmaku(String danmaku) {
+    public Result danmaku(List<Danmaku> danmaku) {
         this.danmaku = danmaku;
+        return this;
+    }
+
+    public Result click(String click) {
+        this.click = click;
         return this;
     }
 

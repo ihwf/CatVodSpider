@@ -1,86 +1,106 @@
 package com.github.catvod.debug;
 
 import android.app.Activity;
-import android.os.*;
+import android.os.Bundle;
+import android.widget.Button;
 
-import android.view.ViewGroup;
-import android.webkit.CookieManager;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import com.github.catvod.R;
-import com.github.catvod.net.OkHttp;
-import com.github.catvod.spider.*;
-import org.apache.commons.lang3.StringEscapeUtils;
+import com.github.catvod.crawler.Spider;
+import com.github.catvod.spider.Init;
+import com.github.catvod.spider.Uvod;
+import com.orhanobut.logger.AndroidLogAdapter;
+import com.orhanobut.logger.Logger;
 
-import static com.github.catvod.utils.Util.addView;
-import static com.github.catvod.utils.Util.removeView;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
+
+    private ExecutorService executor;
+    private Spider spider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //Logger.addLogAdapter(new AndroidLogAdapter());
-        Init.init(getApplicationContext());
-        // It is usually init in the application.
-        new Thread(() -> {
-            try {
-
-                bypassCf("https://www.czzy88.com/xssearch?q=斗罗");
-                while (cookie[0] == null) SystemClock.sleep(1000);
-                System.out.println(html);
-
-
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
+        Button homeContent = findViewById(R.id.homeContent);
+        Button homeVideoContent = findViewById(R.id.homeVideoContent);
+        Button categoryContent = findViewById(R.id.categoryContent);
+        Button detailContent = findViewById(R.id.detailContent);
+        Button playerContent = findViewById(R.id.playerContent);
+        Button searchContent = findViewById(R.id.searchContent);
+        homeContent.setOnClickListener(view -> executor.execute(this::homeContent));
+        homeVideoContent.setOnClickListener(view -> executor.execute(this::homeVideoContent));
+        categoryContent.setOnClickListener(view -> executor.execute(this::categoryContent));
+        detailContent.setOnClickListener(view -> executor.execute(this::detailContent));
+        playerContent.setOnClickListener(view -> executor.execute(this::playerContent));
+        searchContent.setOnClickListener(view -> executor.execute(this::searchContent));
+        Logger.addLogAdapter(new AndroidLogAdapter());
+        executor = Executors.newCachedThreadPool();
+        executor.execute(this::initSpider);
     }
 
-
-    static final String[] cookie = new String[1];
-    static String html = "";
-    public static void bypassCf(String url) {
-        String content = OkHttp.string(url);
-        if (content.contains("Just a moment...")) {
-            Init.run(() -> {
-                WebView webView = new WebView(Init.context());
-                webView.getSettings().setDatabaseEnabled(true);
-                webView.getSettings().setDomStorageEnabled(true);
-                webView.getSettings().setJavaScriptEnabled(true);
-                ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(0, 0);
-                addView(webView, layoutParams);
-                webView.setWebViewClient(new WebViewClient() {
-                    @Override
-                    public void onPageFinished(WebView view, String url1) {
-                        cookie[0] = CookieManager.getInstance().getCookie(url1);
-                        if (cookie[0] != null && cookie[0].contains("cf_clearance")) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                                view.evaluateJavascript("(function() { return document.documentElement.outerHTML; })();",
-                                        html -> {
-                                            if (html != null && !html.isEmpty()) {
-                                                String htmlString = html.replaceAll("^\"+|\"+$", "");
-                                                MainActivity.html = StringEscapeUtils.unescapeJava(htmlString);
-
-                                            }
-                                        });
-                            }
-                            if (view != null) {
-                                new Handler(Looper.getMainLooper()).post(() -> {
-                                    removeView(webView);
-                                    webView.destroy();
-                                });
-                            }
-                        }
-                    }
-                });
-                webView.loadUrl(url);
-            });
-        } else {
-            html = content;
+    private void initSpider() {
+        try {
+            Init.init(getApplicationContext());
+            spider = new Uvod();
+            spider.init(this, "");
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
+    public void homeContent() {
+        try {
+            Logger.t("homeContent").d(spider.homeContent(true));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void homeVideoContent() {
+        try {
+            Logger.t("homeVideoContent").d(spider.homeVideoContent());
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void categoryContent() {
+        try {
+            HashMap<String, String> extend = new HashMap<>();
+            extend.put("c", "19");
+            extend.put("year", "2024");
+            Logger.t("categoryContent").d(spider.categoryContent("3", "2", true, extend));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void detailContent() {
+        try {
+            Logger.t("detailContent").d(spider.detailContent(Arrays.asList("78702")));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void playerContent() {
+        try {
+            Logger.t("playerContent").d(spider.playerContent("", "382044/1/78", new ArrayList<>()));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void searchContent() {
+        try {
+            Logger.t("searchContent").d(spider.searchContent("我的人间烟火", false));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -13,20 +13,19 @@ import android.webkit.WebViewClient;
 
 import com.github.catvod.spider.Init;
 
-import org.mozilla.universalchardet.UniversalDetector;
-
-import java.math.BigInteger;
+import java.io.File;
+import java.io.FileInputStream;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Util {
 
     public static final Pattern RULE = Pattern.compile("http((?!http).){12,}?\\.(m3u8|mp4|mkv|flv|mp3|m4a|aac)\\?.*|http((?!http).){12,}\\.(m3u8|mp4|mkv|flv|mp3|m4a|aac)|http((?!http).)*?video/tos*");
-    public static final String CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36";
+    public static final Pattern THUNDER = Pattern.compile("(magnet|thunder|ed2k):.*");
+    public static final String CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
     public static final String ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7";
     public static final List<String> MEDIA = Arrays.asList("mp4", "mkv", "wmv", "flv", "avi", "iso", "mpg", "ts", "mp3", "aac", "flac", "m4a", "ape", "ogg");
     public static final List<String> SUB = Arrays.asList("srt", "ass", "ssa", "vtt");
@@ -37,10 +36,12 @@ public class Util {
         return false;
     }
 
-    public static boolean isBlackVodUrl(String url) {
-        List<String> hosts = Arrays.asList("973973.xyz", ".fit:");
-        for (String host : hosts) if (url.contains(host)) return true;
-        return false;
+    public static boolean isThunder(String url) {
+        return THUNDER.matcher(url).find() || isTorrent(url);
+    }
+
+    public static boolean isTorrent(String url) {
+        return !url.startsWith("magnet") && url.split(";")[0].endsWith(".torrent");
     }
 
     public static boolean isVideoFormat(String url) {
@@ -48,23 +49,12 @@ public class Util {
         return RULE.matcher(url).find();
     }
 
-    public static byte[] toUtf8(byte[] bytes) {
-        try {
-            UniversalDetector detector = new UniversalDetector(null);
-            detector.handleData(bytes, 0, bytes.length);
-            detector.dataEnd();
-            return new String(bytes, detector.getDetectedCharset()).getBytes("UTF-8");
-        } catch (Exception e) {
-            return bytes;
-        }
-    }
-
     public static boolean isSub(String ext) {
         return SUB.contains(ext);
     }
 
     public static boolean isMedia(String text) {
-        return MEDIA.contains(getExt(text));
+        return MEDIA.contains(getExt(text).toLowerCase());
     }
 
     public static String getExt(String name) {
@@ -127,23 +117,6 @@ public class Util {
         return "";
     }
 
-    public static String MD5(String src) {
-        return MD5(src, "UTF-8");
-    }
-
-    public static String MD5(String src, String charset) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] messageDigest = md.digest(src.getBytes(charset));
-            BigInteger no = new BigInteger(1, messageDigest);
-            StringBuilder sb = new StringBuilder(no.toString(16));
-            while (sb.length() < 32) sb.insert(0, "0");
-            return sb.toString().toLowerCase();
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
     public static void copy(String text) {
         ClipboardManager manager = (ClipboardManager) Init.context().getSystemService(Context.CLIPBOARD_SERVICE);
         manager.setPrimaryClip(ClipData.newPlainText("fongmi", text));
@@ -155,8 +128,11 @@ public class Util {
     }
 
     public static void loadUrl(WebView webView, String script, ValueCallback<String> callback) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) webView.evaluateJavascript(script, callback);
-        else webView.loadUrl(script);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            webView.evaluateJavascript(script, callback);
+        } else {
+            webView.loadUrl("javascript:" + script);
+        }
     }
 
     public static void addView(View view, ViewGroup.LayoutParams params) {
@@ -187,18 +163,5 @@ public class Util {
             webView.setWebViewClient(client);
             webView.loadUrl(url);
         });
-    }
-
-    public static String getDigit(String text) {
-        try {
-            String newText = text;
-            Matcher matcher = Pattern.compile(".*(1080|720|2160|4k|4K).*").matcher(text);
-            if (matcher.find()) newText = matcher.group(1) + " " + text;
-            matcher = Pattern.compile("^([0-9]+)").matcher(text);
-            if (matcher.find()) newText = matcher.group(1) + " " + newText;
-            return newText.replaceAll("\\D+", "") + " " + newText.replaceAll("\\d+", "");
-        } catch (Exception e) {
-            return "";
-        }
     }
 }

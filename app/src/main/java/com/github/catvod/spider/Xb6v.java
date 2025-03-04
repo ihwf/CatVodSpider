@@ -34,7 +34,7 @@ import okhttp3.Response;
  */
 public class Xb6v extends Spider {
 
-    private final String siteUrl = "http://www.xb6v.com";
+    private final String siteUrl = "https://www.xb6v.com";
     private String nextSearchUrlPrefix;
     private String nextSearchUrlSuffix;
 
@@ -225,7 +225,7 @@ public class Xb6v extends Spider {
                     .addHeader("Referer", siteUrl + "/")
                     .post(formBody)
                     .build();
-            Response response = OkHttp.client().newCall(request).execute();
+            Response response = OkHttp.newCall(request);
             String[] split = String.valueOf(response.request().url()).split("\\?searchid=");
             nextSearchUrlPrefix = split[0] + "index.php?page=";
             nextSearchUrlSuffix = "&searchid=" + split[1];

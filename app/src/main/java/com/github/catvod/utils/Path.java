@@ -2,19 +2,21 @@ package com.github.catvod.utils;
 
 import android.os.Environment;
 
+import com.github.catvod.crawler.SpiderDebug;
+import com.github.catvod.spider.Init;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class Path {
 
-    private static File check(File file) {
+    private static File mkdir(File file) {
         if (!file.exists()) file.mkdirs();
         return file;
     }
@@ -27,8 +29,20 @@ public class Path {
         return Environment.getExternalStorageDirectory();
     }
 
+    public static File cache() {
+        return Init.context().getCacheDir();
+    }
+
+    public static File files() {
+        return Init.context().getFilesDir();
+    }
+
     public static File tv() {
-        return check(new File(root() + File.separator + "TV"));
+        return mkdir(new File(root() + File.separator + "TV"));
+    }
+
+    public static File cache(String path) {
+        return mkdir(new File(cache(), path));
     }
 
     public static File tv(String name) {
@@ -62,30 +76,44 @@ public class Path {
 
     public static File write(File file, byte[] data) {
         try {
-            FileOutputStream fos = new FileOutputStream(file);
+            FileOutputStream fos = new FileOutputStream(create(file));
             fos.write(data);
             fos.flush();
             fos.close();
-            chmod(file);
             return file;
         } catch (Exception ignored) {
             return file;
+        }
+    }
+
+    public static void copy(File in, File out) {
+        try {
+            copy(new FileInputStream(in), out);
+        } catch (Exception ignored) {
         }
     }
 
     public static void copy(InputStream in, File out) {
         try {
-            copy(in, new FileOutputStream(out));
+            int read;
+            byte[] buffer = new byte[8192];
+            FileOutputStream fos = new FileOutputStream(create(out));
+            while ((read = in.read(buffer)) != -1) fos.write(buffer, 0, read);
+            fos.close();
+            in.close();
         } catch (Exception ignored) {
         }
     }
 
-    public static void copy(InputStream inputStream, OutputStream outputStream) throws IOException {
-        byte[] buffer = new byte[8192];
-        int amountRead;
-        while ((amountRead = inputStream.read(buffer)) != -1) {
-            outputStream.write(buffer, 0, amountRead);
-        }
+    public static void move(File in, File out) {
+        copy(in, out);
+        clear(in);
+    }
+
+    public static void clear(File dir) {
+        if (dir == null) return;
+        if (dir.isDirectory()) for (File file : list(dir)) clear(file);
+        if (dir.delete()) SpiderDebug.log("Deleted:" + dir.getAbsolutePath());
     }
 
     public static List<File> list(File dir) {
@@ -93,10 +121,12 @@ public class Path {
         return files == null ? Collections.emptyList() : Arrays.asList(files);
     }
 
-    public static File chmod(File file) {
+    public static File create(File file) throws Exception {
         try {
-            Process process = Runtime.getRuntime().exec("chmod 777 " + file);
-            process.waitFor();
+            if (file.getParentFile() != null) mkdir(file.getParentFile());
+            if (!file.canWrite()) file.setWritable(true);
+            if (!file.exists()) file.createNewFile();
+            Shell.exec("chmod 777 " + file);
             return file;
         } catch (Exception e) {
             e.printStackTrace();
